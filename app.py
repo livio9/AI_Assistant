@@ -3,6 +3,7 @@ import os
 import time
 
 from chat import chat, chat_stream
+from search import search
 # Chatbot demo with multimodal input (text, markdown, LaTeX, code blocks, image, audio, & video). Plus shows support for streaming text.
 
 messages = []
@@ -41,6 +42,16 @@ def bot(history):
 
     # 流式聊天模式
     global messages
+    content = messages[-1]["content"]
+    if content.startswith("/search"):
+        # 提取 /search 指令后的内容
+        search_query = content[len("/search "):]
+        
+        # 调用 search 函数获取搜索结果
+        search_result = search(search_query)
+        
+        # 将搜索结果更新到 messages 中
+        messages.append({"role": "user", "content": search_result})
     # 使用 chat_stream 函数生成流式回复
     assistant_reply_stream = chat_stream(messages)
     
