@@ -15,3 +15,12 @@ def chat(messages):
         max_tokens=150
     )
     return response["choices"][0]["message"]["content"]
+
+def chat_stream(messages):
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=messages,
+        temperature=0.7,
+        stream = True
+    )
+    return response
