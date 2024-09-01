@@ -2,7 +2,7 @@ import gradio as gr
 import os
 import time
 
-from chat import chat
+from chat import chat, chat_stream
 # Chatbot demo with multimodal input (text, markdown, LaTeX, code blocks, image, audio, & video). Plus shows support for streaming text.
 
 messages = []
@@ -26,17 +26,32 @@ def add_file(history, file):
 
 
 def bot(history):
+    # 普通聊天模式
+    # global messages
+    # # 调用 chat 函数生成回复
+    # assistant_reply = chat(messages)
+    
+    # # 更新 history 中最后一条记录的 AI 回复部分
+    # history[-1][1] = assistant_reply
+    
+    # # 记录新的 assistant 回复到 messages 中
+    # messages.append({"role": "assistant", "content": assistant_reply})
+    
+    # return history
+
+    # 流式聊天模式
     global messages
-    # 调用 chat 函数生成回复
-    assistant_reply = chat(messages)
+    # 使用 chat_stream 函数生成流式回复
+    assistant_reply_stream = chat_stream(messages)
     
-    # 更新 history 中最后一条记录的 AI 回复部分
-    history[-1][1] = assistant_reply
+    assistant_reply = ""
+    for chunk in assistant_reply_stream:
+        assistant_reply += chunk["choices"][0]["delta"].get("content", "")
+        history[-1][1] = assistant_reply
+        yield history
     
-    # 记录新的 assistant 回复到 messages 中
+    # 记录完整的 assistant 回复到 messages 中
     messages.append({"role": "assistant", "content": assistant_reply})
-    
-    return history
 
 with gr.Blocks() as demo:
     chatbot = gr.Chatbot(
