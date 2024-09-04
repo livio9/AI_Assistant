@@ -87,6 +87,7 @@ def bot(history):
     elif current_file_text.endswith(".png"):
         # print(current_file_text)
         reply_classify = image_classification(current_file_text)
+        history[-1][1] = reply_classify
         yield history
         messages.append({"role": "assistant", "content": reply_classify})
 
