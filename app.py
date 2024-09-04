@@ -19,23 +19,24 @@ def add_text(history, text):
     return history, gr.update(value="", interactive=False)
 
 
-
 def add_file(history, file):
-    """
-    TODO
-    """
+    prompt = ""
     global messages
     global current_file_text
     if file.name.endswith(".txt"):
         with open(file.name, "r", encoding="utf-8") as f:
             current_file_text = f.read()
             prompt = generate_summary(current_file_text)
+            
+    elif file.name.endswith(".png"):
+        current_file_text = file.name
+        prompt = f"Please classify{current_file_text}"
 
     user_input = {"role": "user", "content": prompt}
     messages.append(user_input)
     history = history + [((file.name,), None)]
     return history
-
+  
 
 def bot(history):
     # 普通聊天模式
@@ -91,10 +92,20 @@ def bot(history):
         messages[-1]["content"] = function_content
 
         assistant_reply_stream = function_calling(messages)
+        
+    # 生成图像功能（YUNYAN ZHAO）
+    elif content.startswith("/image"):
+        img_query = content[len("/image "):]
+        messages.append({"role": "user", "content": content})
+        assistant_reply_stream = image_generate(img_query)
     
     if(assistant_reply_stream == None):
-        # 使用 chat_stream 函数生成流式回复
-        assistant_reply_stream = chat_stream(messages)
+        if current_file_text is None:
+          # 使用 chat_stream 函数生成流式回复
+          assistant_reply_stream = chat_stream(messages)
+        elif current_file_text.endswith(".png"):
+            # print(current_file_text)
+            assistant_reply_stream = image_classification(current_file_text)
     
     print("type:", type(assistant_reply_stream))
     
