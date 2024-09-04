@@ -1,7 +1,8 @@
 import gradio as gr
 import os
 import time
-
+from image_generate import image_generate
+from mnist import image_classification
 from chat import chat, chat_stream
 from search import search
 # Chatbot demo with multimodal input (text, markdown, LaTeX, code blocks, image, audio, & video). Plus shows support for streaming text.
@@ -19,12 +20,15 @@ def add_text(history, text):
 
 
 def add_file(history, file):
-    """
-    TODO
-    """
+    global messages
+    global current_file_text
+    if file.name.endswith(".png"):
+        current_file_text = file.name
+        classify_query = f"Please classify{current_file_text}"
+        messages.append({"role": "user", "content": classify_query})
+
     history = history + [((file.name,), None)]
     return history
-
 
 def bot(history):
     # 普通聊天模式
@@ -40,29 +44,52 @@ def bot(history):
     
     # return history
 
+    # 标记是否流式输出
+    flu = 1
+
     # 流式聊天模式
     global messages
-    content = messages[-1]["content"]
-    if content.startswith("/search"):
-        # 提取 /search 指令后的内容
-        search_query = content[len("/search "):]
-        
-        # 调用 search 函数获取搜索结果
-        search_result = search(search_query)
-        
-        # 将搜索结果更新到 messages 中
-        messages.append({"role": "user", "content": search_result})
-    # 使用 chat_stream 函数生成流式回复
-    assistant_reply_stream = chat_stream(messages)
-    
-    assistant_reply = ""
-    for chunk in assistant_reply_stream:
-        assistant_reply += chunk["choices"][0]["delta"].get("content", "")
-        history[-1][1] = assistant_reply
+    if current_file_text is None:
+        content = messages[-1]["content"]
+
+        if content.startswith("/search"):
+            # 提取 /search 指令后的内容
+            search_query = content[len("/search "):]
+
+            # 调用 search 函数获取搜索结果
+            search_result = search(search_query)
+
+            # 将搜索结果更新到 messages 中
+            messages.append({"role": "user", "content": search_result})
+
+        # 生成图像功能（YUNYAN ZHAO）
+        elif content.startswith("/image"):
+            flu = 0
+            img_query = content[len("/image "):]
+            messages.append({"role": "user", "content": content})
+            img_link = image_generate(img_query)
+            messages.append({"role": "assistant", "content": f'<img src="{str(img_link)}" alt="Generated Image">'})
+            # messages.append({"role": "assistant", "content": str(history[-1][1][0])})
+            history[-1][1] = (img_link,)
+            yield history
+
+        # 使用 chat_stream 函数生成流式回复
+        if flu:
+            assistant_reply_stream = chat_stream(messages)
+            assistant_reply = ""
+            for chunk in assistant_reply_stream:
+                assistant_reply += chunk["choices"][0]["delta"].get("content", "")
+                history[-1][1] = assistant_reply
+                yield history
+
+            # 记录完整的 assistant 回复到 messages 中
+            messages.append({"role": "assistant", "content": assistant_reply})
+    elif current_file_text.endswith(".png"):
+        # print(current_file_text)
+        reply_classify = image_classification(current_file_text)
         yield history
-    
-    # 记录完整的 assistant 回复到 messages 中
-    messages.append({"role": "assistant", "content": assistant_reply})
+        messages.append({"role": "assistant", "content": reply_classify})
+
 
 with gr.Blocks() as demo:
     chatbot = gr.Chatbot(
